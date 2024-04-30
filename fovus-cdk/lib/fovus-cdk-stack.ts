@@ -66,7 +66,7 @@ export class FovusCdkStack extends cdk.Stack {
 
   private createS3Bucket(): Bucket {
     const bucket = new Bucket(this, this.stackName + "s3Bucket", {
-      bucketName: this.stackName + "s3BucketNew",
+      bucketName: "fovus-stack-s3-bucket",
       accessControl: BucketAccessControl.BUCKET_OWNER_FULL_CONTROL,
       encryption: BucketEncryption.S3_MANAGED,
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
