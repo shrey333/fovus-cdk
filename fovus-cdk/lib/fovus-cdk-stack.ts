@@ -76,7 +76,7 @@ export class FovusCdkStack extends cdk.Stack {
     const s3CorsRule: CorsRule = {
       allowedHeaders: ["*"],
       allowedMethods: [HttpMethods.POST, HttpMethods.PUT],
-      allowedOrigins: ["https://main.d3v1kbyvlhae0e.amplifyapp.com"],
+      allowedOrigins: ["*"], // Change this to your domain
       exposedHeaders: [""],
     };
     bucket.addCorsRule(s3CorsRule);
@@ -96,7 +96,7 @@ export class FovusCdkStack extends cdk.Stack {
       restApiName: this.stackName + "RestApi",
       cloudWatchRole: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: ["https://main.d3v1kbyvlhae0e.amplifyapp.com"],
+        allowOrigins: ["*"], // Change this to your domain
       },
       deployOptions: {
         metricsEnabled: true,
