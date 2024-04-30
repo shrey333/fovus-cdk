@@ -76,7 +76,7 @@ export class FovusCdkStack extends cdk.Stack {
     const s3CorsRule: CorsRule = {
       allowedHeaders: ["*"],
       allowedMethods: [HttpMethods.POST, HttpMethods.PUT],
-      allowedOrigins: ["*"],
+      allowedOrigins: [process.env.CDK_DEPLOY_FRONTEND_URL || "*"],
       exposedHeaders: [""],
     };
     bucket.addCorsRule(s3CorsRule);
@@ -96,7 +96,7 @@ export class FovusCdkStack extends cdk.Stack {
       restApiName: this.stackName + "RestApi",
       cloudWatchRole: true,
       defaultCorsPreflightOptions: {
-        allowOrigins: Cors.ALL_ORIGINS,
+        allowOrigins: [process.env.CDK_DEPLOY_FRONTEND_URL || "*"],
       },
       deployOptions: {
         metricsEnabled: true,
@@ -141,6 +141,7 @@ export class FovusCdkStack extends cdk.Stack {
       environment: {
         PRIMARY_KEY: "id",
         TABLE: dynamoTable.tableName,
+        REGION: this.region,
       },
     };
 
@@ -190,7 +191,7 @@ export class FovusCdkStack extends cdk.Stack {
             IamInstanceProfile: { Arn: instanceProfile.attrArn },
             Monitoring: { Enabled: true },
             InstanceInitiatedShutdownBehavior: "terminate",
-            "UserData.$": `States.Base64Encode(States.Format('#!/bin/bash\nsudo apt-get update -y\nsudo apt install python3-pip unzip -y\npip install boto3\ncurl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"\nunzip awscliv2.zip\nsudo ./aws/install\naws s3 cp s3://fovus-stack-s3-bucket/python_script.py python_script.py\npython3 python_script.py {} ${dynamoTable.tableName}\nshutdown -h now', $.id))`,
+            "UserData.$": `States.Base64Encode(States.Format('#!/bin/bash\nsudo apt-get update -y\nsudo apt install python3-pip unzip -y\npip install boto3\ncurl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"\nunzip awscliv2.zip\nsudo ./aws/install\naws s3 cp s3://fovus-stack-s3-bucket/python_script.py python_script.py\npython3 python_script.py {} ${dynamoTable.tableName} ${this.region}\nshutdown -h now', $.id))`,
           },
           End: true,
           InputPath: "$[0]",

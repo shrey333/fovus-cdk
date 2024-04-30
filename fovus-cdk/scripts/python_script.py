@@ -3,17 +3,6 @@ import boto3
 import os
 from botocore.exceptions import ClientError
 
-aws_region = "us-east-1"
-
-dynamodb = boto3.resource(
-    "dynamodb",
-    region_name=aws_region,
-)
-s3 = boto3.client(
-    "s3",
-    region_name=aws_region,
-)
-
 
 def parse_bucket_and_key(input_file_path):
     parts = input_file_path.split("/")
@@ -24,6 +13,11 @@ def parse_bucket_and_key(input_file_path):
 
 def get_input_text_and_file(id, table_name):
     try:
+        global aws_region
+        dynamodb = boto3.resource(
+            "dynamodb",
+            region_name=aws_region,
+        )
         table = dynamodb.Table(table_name)
         response = table.get_item(Key={"id": id})
         item = response.get("Item")
@@ -40,6 +34,11 @@ def get_input_text_and_file(id, table_name):
 
 def download_file_from_s3(bucket_name, file_key, destination_file):
     try:
+        global aws_region
+        s3 = boto3.client(
+            "s3",
+            region_name=aws_region,
+        )
         s3.download_file(bucket_name, file_key, destination_file)
     except ClientError as e:
         print(f"Error downloading file from S3: {e}")
@@ -55,6 +54,11 @@ def append_input_text_to_file(input_text, input_file_path):
 
 def upload_file_to_s3(bucket_name, file_path, output_file_key):
     try:
+        global aws_region
+        s3 = boto3.client(
+            "s3",
+            region_name=aws_region,
+        )
         s3.upload_file(file_path, bucket_name, output_file_key)
     except ClientError as e:
         print(f"Error uploading file to S3: {e}")
@@ -62,6 +66,11 @@ def upload_file_to_s3(bucket_name, file_path, output_file_key):
 
 def update_dynamodb_table(table_name, id, output_file_key):
     try:
+        global aws_region
+        dynamodb = boto3.resource(
+            "dynamodb",
+            region_name=aws_region,
+        )
         table = dynamodb.Table(table_name)
         response = table.update_item(
             Key={"id": id},
@@ -92,4 +101,6 @@ def main(id, table_name):
 if __name__ == "__main__":
     id = sys.argv[1]
     table_name = sys.argv[2]
+    global aws_region
+    aws_region = sys.argv[3]
     main(id, table_name)

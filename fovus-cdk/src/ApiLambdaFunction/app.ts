@@ -5,10 +5,11 @@ import cors from "cors";
 
 const TABLE_NAME = process.env.TABLE || "";
 const PRIMARY_KEY = process.env.PRIMARY_KEY || "";
+const REGION = process.env.REGION || "";
 
 const app = express();
 
-const dbClient = new DynamoDBClient({ region: "us-east-1" });
+const dbClient = new DynamoDBClient({ region: REGION });
 
 app.use(express.json());
 app.use(cors());
