@@ -24,6 +24,7 @@ import {
   NodejsFunctionProps,
 } from "aws-cdk-lib/aws-lambda-nodejs";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
+import { CfnPipe } from "aws-cdk-lib/aws-pipes";
 import {
   BlockPublicAccess,
   Bucket,
@@ -47,7 +48,9 @@ export class FovusCdkStack extends cdk.Stack {
 
     this.createApiGateway(dynamoTable);
 
-    this.createStepFunction(dynamoTable, bucket);
+    const stateMachine = this.createStepFunction(dynamoTable, bucket);
+
+    this.createPipe(dynamoTable, stateMachine);
   }
 
   private createDynamoDBTable(): Table {
@@ -221,6 +224,58 @@ export class FovusCdkStack extends cdk.Stack {
       stateMachineName: this.stackName + "StateMachine",
       definitionBody: DefinitionBody.fromString(JSON.stringify(stepFunctions)),
       role: stateMachineRole,
+    });
+  }
+
+  private createPipe(dynamoTable: Table, stateMachine: StateMachine): CfnPipe {
+    const pipeRole = new Role(this, this.stackName + "PipeRole", {
+      roleName: this.stackName + "PipeRole",
+      assumedBy: new ServicePrincipal("pipes.amazonaws.com"),
+    });
+
+    dynamoTable.grantStreamRead(pipeRole);
+    dynamoTable.grantStream(pipeRole);
+    stateMachine.grantStartExecution(pipeRole);
+
+    const eventBridgeLogGroup = new LogGroup(
+      this,
+      this.stackName + "PipeLogGroup",
+      {
+        logGroupName: "/aws/events/" + this.stackName + "LogGroup",
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }
+    );
+
+    return new CfnPipe(this, this.stackName + "Pipe", {
+      name: this.stackName + "Pipe",
+      logConfiguration: {
+        cloudwatchLogsLogDestination: {
+          logGroupArn: eventBridgeLogGroup.logGroupArn,
+        },
+        level: "INFO",
+      },
+      roleArn: pipeRole.roleArn,
+      source: dynamoTable.tableStreamArn!,
+      sourceParameters: {
+        dynamoDbStreamParameters: {
+          batchSize: 1,
+          startingPosition: "LATEST",
+        },
+        filterCriteria: {
+          filters: [
+            {
+              pattern: JSON.stringify({ eventName: ["INSERT"] }),
+            },
+          ],
+        },
+      },
+      target: stateMachine.stateMachineArn,
+      targetParameters: {
+        stepFunctionStateMachineParameters: {
+          invocationType: "FIRE_AND_FORGET",
+        },
+        inputTemplate: JSON.stringify({ id: "<$.dynamodb.Keys.id.S>" }),
+      },
     });
   }
 }
