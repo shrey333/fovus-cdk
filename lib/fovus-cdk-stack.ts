@@ -5,17 +5,19 @@ import {
   Bucket,
   BucketAccessControl,
   BucketEncryption,
-  CfnBucket,
   CorsRule,
   HttpMethods,
 } from "aws-cdk-lib/aws-s3";
+import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
 import { Construct } from "constructs";
+import { join } from "path";
 
 export class FovusCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
     const dynamoTable = this.createDynamoDBTable();
     const bucket = this.createS3Bucket();
+    this.uploadScriptToS3(bucket);
   }
 
   private createDynamoDBTable(): Table {
@@ -46,5 +48,12 @@ export class FovusCdkStack extends cdk.Stack {
     bucket.addCorsRule(s3CorsRule);
 
     return bucket;
+  }
+
+  private uploadScriptToS3(bucket: Bucket): void {
+    new BucketDeployment(this, this.stackName + "BucketDeployment", {
+      sources: [Source.asset(join(__dirname, "..", "scripts"))],
+      destinationBucket: bucket,
+    });
   }
 }
