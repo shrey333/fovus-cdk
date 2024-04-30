@@ -1,5 +1,6 @@
 import * as cdk from "aws-cdk-lib";
 import {
+  Cors,
   LambdaIntegration,
   MethodLoggingLevel,
   RestApi,
@@ -94,12 +95,14 @@ export class FovusCdkStack extends cdk.Stack {
     const restApi = new RestApi(this, this.stackName + "RestApi", {
       restApiName: this.stackName + "RestApi",
       cloudWatchRole: true,
+      defaultCorsPreflightOptions: {
+        allowOrigins: Cors.ALL_ORIGINS,
+      },
       deployOptions: {
         metricsEnabled: true,
         loggingLevel: MethodLoggingLevel.INFO,
         dataTraceEnabled: true,
       },
-      binaryMediaTypes: ["*/*"],
     });
 
     const apiLambdaRole = new Role(this, this.stackName + "ApiLambdaRole", {
