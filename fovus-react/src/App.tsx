@@ -1,16 +1,21 @@
-import { FileInput, Label, Button, TextInput } from "flowbite-react";
+import { FileInput, Label, Button, TextInput, Toast } from "flowbite-react";
 import "./App.css";
 import { Field, Form, Formik, FormikHelpers } from "formik";
 import * as Yup from "yup";
-import { ChangeEvent } from "react";
+import { ChangeEvent, useState } from "react";
 import { PutObjectCommand, S3Client, S3ClientConfig } from "@aws-sdk/client-s3";
 import axios from "axios";
 
 const formSchema = Yup.object({
   textInput: Yup.string().required("Text input is required"),
-  fileInput: Yup.array()
-    .min(1, "Please upload file")
-    .max(1, "Please upload file"),
+  fileInput: Yup.mixed()
+    .required("File input is required")
+    .test("fileType", "Only TXT files are allowed", (value) => {
+      if (value instanceof File) {
+        return value.type === "text/plain";
+      }
+      return true;
+    }),
 });
 
 type FormType = Yup.InferType<typeof formSchema>;
@@ -25,10 +30,14 @@ const s3ClientConfig: S3ClientConfig = {
 
 const initialValues: FormType = {
   textInput: "",
-  fileInput: [],
-} as FormType;
+  fileInput: new File([], ""),
+};
 
 function App() {
+  const [showToast, setShowToast] = useState(false);
+
+  const [toastMessage, setToastMessage] = useState("");
+
   const uploadFile = async (file: File) => {
     const s3Client = new S3Client(s3ClientConfig);
     const objectParams = {
@@ -45,14 +54,24 @@ function App() {
     { setSubmitting }: FormikHelpers<FormType>
   ) => {
     setSubmitting(true);
-    const file = values.fileInput?.[0];
+    const file = values.fileInput as File;
     await uploadFile(file)
       .then(async () => {
-        await axios.post(import.meta.env.VITE_REACT_APP_API_URL ?? "", {
-          input_text: values.textInput,
-          input_file_path:
-            import.meta.env.VITE_REACT_APP_BUCKET_NAME + file.name,
-        });
+        await axios
+          .post(import.meta.env.VITE_REACT_APP_API_URL ?? "", {
+            input_text: values.textInput,
+            input_file_path: `${import.meta.env.VITE_REACT_APP_BUCKET_NAME}/${
+              file.name
+            }`,
+          })
+          .then(() => {
+            setToastMessage("Data submitted successfully");
+            setShowToast(true);
+          });
+      })
+      .catch(() => {
+        setToastMessage("Error submitting data");
+        setShowToast(true);
       })
       .finally(() => {
         setSubmitting(false);
@@ -60,14 +79,20 @@ function App() {
   };
 
   return (
-    <>
+    <div className="flex flex-col items-center justify-center mt-32">
       <Formik
         initialValues={initialValues}
         validationSchema={formSchema}
         onSubmit={onSubmit}
       >
         {({ setFieldValue, errors, touched, isSubmitting }) => (
-          <Form className="text-start">
+          <Form className="text-start max-w-md">
+            {showToast && (
+              <Toast className="mb-6 max-w-full">
+                <div className="ml-3 text-sm font-normal">{toastMessage}</div>
+                <Toast.Toggle onDismiss={() => setShowToast(false)} />
+              </Toast>
+            )}
             <div className="mb-6">
               <div className="mb-2 text-start">
                 <Label htmlFor="text-input" value="Text input" />
@@ -102,11 +127,8 @@ function App() {
                   errors.fileInput && touched.fileInput ? "failure" : "primary"
                 }
                 onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                  if (event.currentTarget.files) {
-                    setFieldValue(
-                      "fileInput",
-                      Array.from(event.currentTarget.files)
-                    );
+                  if (event.currentTarget.files?.length) {
+                    setFieldValue("fileInput", event.currentTarget.files[0]);
                   }
                 }}
                 helperText={
@@ -118,6 +140,7 @@ function App() {
             </div>
             <Button
               type="submit"
+              color="dark"
               isProcessing={isSubmitting}
               disabled={isSubmitting}
             >
@@ -126,7 +149,7 @@ function App() {
           </Form>
         )}
       </Formik>
-    </>
+    </div>
   );
 }
 

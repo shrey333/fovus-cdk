@@ -1,5 +1,6 @@
 import sys
 import boto3
+import os
 from botocore.exceptions import ClientError
 
 aws_region = "us-east-1"
@@ -77,8 +78,12 @@ def main(id, table_name):
         bucket_name_input, file_key = parse_bucket_and_key(input_file_path)
         download_file_from_s3(bucket_name_input, file_key, file_key)
         append_input_text_to_file(input_text, file_key)
-        upload_file_to_s3(bucket_name_input, file_key, f"{file_key}")
-        update_dynamodb_table(table_name, id, f"{bucket_name_input}/{file_key}")
+
+        file_name, extension = os.path.splitext(file_key)
+        new_file_key = f"{file_name}_output{extension}"
+
+        upload_file_to_s3(bucket_name_input, file_key, new_file_key)
+        update_dynamodb_table(table_name, id, f"{bucket_name_input}/{new_file_key}")
         print("Process completed successfully.")
     else:
         print("Invalid ID or data not found.")
