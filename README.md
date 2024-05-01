@@ -1,6 +1,9 @@
 # Fovus
 
-![](demo.mp4)
+
+https://github.com/shrey333/fovus-cdk/assets/53311728/f2025439-3e9b-4830-9b85-6df353e0378f
+
+
 
 ## This project is divided into 2 parts:
 
